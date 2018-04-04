@@ -1,5 +1,6 @@
 /* CHANGELOG
 
+- added momentjs
 - getMessage().getId() not working properly, change when draft was modified
 
 */
