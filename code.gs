@@ -8,6 +8,8 @@
 /* Written originally by Amit Agarwal of labnol.org */
 /* Original Post: https://ctrlq.org/code/19716-schedule-gmail-emails */
 
+var sheetName = "draft";
+
 function testLoopThroughItems() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("draft");
@@ -25,44 +27,34 @@ function testLoopThroughItems() {
     // table.commit()
 }
 
-function testClearContent() {
-    var sh = new SheetHelper();
-    sh.clearSheet();
-}
-
-function testClearContent1() {
-  var start, end;
-  start = 2;
-  end = sheet.getLastRow() - 1;//Number of last row with content
-  //blank rows after last row with content will not be deleted
-  sheet.deleteRows(start, end);
-}
-
 function initialize() {
 
-    /* Clear the current sheet */
-    var sheet = SpreadsheetApp.getActiveSheet();
-    sheet.getRange(2, 1, sheet.getLastRow() + 1, 5).clearContent();
+  /* Clear draft form Speadsheet */
+  var mySheatHelper = new SheetHelper(sheetName, 2);
+  mySheatHelper.clearSheet();
   
-    /* Delete all existing triggers */
-    var triggers = ScriptApp.getProjectTriggers();
-    for (var i = 0; i < triggers.length; i++) {
-        if (triggers[i].getHandlerFunction() === "sendMails") {
-            ScriptApp.deleteTrigger(triggers[i]);
-        }
-    }
+  var sheet = mySheatHelper.getCurrentSheet();
+  var gridRange = sheet.getDataRange();
+  var grid = new Table(gridRange);
+  
+  /* Delete all existing triggers */
+  mySheatHelper.deleteTriggers("sendMails");
 
-    /* Import Gmail Draft Messages into the Spreadsheet */
-    var drafts = GmailApp.getDrafts();
-    if (drafts.length > 0) {
-        var rows = [];
-        for (var i = 0; i < drafts.length; i++) {
-            if (drafts[i].getMessage().getTo() !== "") {
-                rows.push([drafts[i].getId(), drafts[i].getMessage().getTo(), drafts[i].getMessage().getSubject(), moment().format("DD/MM/YYYY HH.mm.ss"), ""]);
-            }
-        }
-        sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+  /* Import Gmail Draft Messages into the Spreadsheet */
+  var drafts = GmailApp.getDrafts();
+  if (drafts.length > 0) {
+    for (var i = 0; i < drafts.length; i++) {
+      if (drafts[i].getMessage().getTo() !== "") {
+        grid.add({
+          "ID": drafts[i].getId(), 
+          "TO": drafts[i].getMessage().getTo(), 
+          "SUBJECT": drafts[i].getMessage().getSubject(), 
+          "DATE": moment().format("DD/MM/YYYY HH.mm.ss"), 
+          "STATUS": ""});
+        grid.commit()
+      }
     }
+  }
 }
 
 /* Create time-driven triggers based on Gmail send schedule */
