@@ -1,4 +1,4 @@
-function SheetHelper(sheetName, headerRow) {
+function SheetHelper(sheetName, headerRow) {  
   this.headerRow = !headerRow ? 1 : headerRow;
   this.sheet = !sheetName ? SpreadsheetApp.getActiveSheet() : SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
 }

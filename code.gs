@@ -30,15 +30,14 @@ function testLoopThroughItems() {
 function initialize() {
 
   /* Clear draft form Speadsheet */
-  var mySheatHelper = new SheetHelper(sheetName, 2);
-  mySheatHelper.clearSheet();
+  var mySheetHelper = new SheetHelper(sheetName, 2);  
+  mySheetHelper.clearSheet();
   
-  var sheet = mySheatHelper.getCurrentSheet();
-  var gridRange = sheet.getDataRange();
+  var gridRange = mySheetHelper.getCurrentSheet().getDataRange();
   var grid = new Table(gridRange);
   
   /* Delete all existing triggers */
-  mySheatHelper.deleteTriggers("sendMails");
+  mySheetHelper.deleteTriggers("sendMails");
 
   /* Import Gmail Draft Messages into the Spreadsheet */
   var drafts = GmailApp.getDrafts();
@@ -49,8 +48,8 @@ function initialize() {
           "ID": drafts[i].getId(), 
           "TO": drafts[i].getMessage().getTo(), 
           "SUBJECT": drafts[i].getMessage().getSubject(), 
-          "DATE": moment().format("DD/MM/YYYY HH.mm.ss"), 
-          "STATUS": ""});
+          "DATE": moment().format("DD/MM/YYYY HH:mm"), 
+          "STATUS": "TO SCHEDULE"});
         grid.commit()
       }
     }
@@ -59,8 +58,35 @@ function initialize() {
 
 /* Create time-driven triggers based on Gmail send schedule */
 function setSchedule() {
+    var mySheetHelper = new SheetHelper(sheetName);
+    var gridRange = mySheetHelper.getCurrentSheet().getDataRange();
+    var table = new Table(gridRange);
+    var records = table.select({"STATUS": "TO SCHEDULE"});
+  
+      for (var i = 0; i < records.length; i ++) {
+        // This will print in gas console the first name of everyone in the Table.
+        Logger.log(records[i].getFieldValue("ID"));
+        var schedule = moment(records[i].getFieldValue("DATE"), "DD/MM/YYYY HH:mm");
+        //Logger.log(schedule);
+        Logger.log(schedule.isBefore(moment()));
+        Logger.log(schedule.toDate());
+        Logger.log(moment.isDate(schedule.toDate()));
+        Logger.log(schedule.format("DD-MM-YYYY HH:mm"));
+        if (!schedule.isBefore(moment())) {
+          ScriptApp.newTrigger("sendMails")
+          .timeBased()
+          .at(schedule.toDate())
+          .create();
+          records[i].setFieldValue("STATUS","SCHEDULED");
+        } else {
+          records[i].setFieldValue("STATUS","DATE IS IN THE PAST");
+        }
+        records[i].commit();
+    }
+  
+ return; 
     var sheet = SpreadsheetApp.getActiveSheet();
-    var data = sheet.getDataRange().getValues();
+    var data = sheet.getDataRange().getCurrentSheet().getValues();
     var time = moment().format("DD/MM/YYYY HH.mm.ss");
     var code = [];
     for (var row in data) {
@@ -69,19 +95,19 @@ function setSchedule() {
           SpreadsheetApp.getUi().alert(schedule);
           SpreadsheetApp.getUi().alert(time);
           SpreadsheetApp.getUi().alert(moment(schedule).format("DD/MM/YYYY HH.mm.ss"));
-            if (schedule !== "") {
+            if (schedule !== "TO SCHEDULE") {
                 if (schedule > time) {
                     ScriptApp.newTrigger("sendMails")
                         .timeBased()
                         .at(schedule)
                         .inTimezone(SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone())
                         .create();
-                    code.push("Scheduled");
+                    code.push("SCHEDULED");
                 } else {
-                    code.push("Date is in the past");
+                    code.push("DATE IS IN THE PAST");
                 }
             } else {
-                code.push("Not Scheduled");
+                code.push("NOT SCHEDULED");
             }
         }
     }
@@ -96,9 +122,9 @@ function sendMails() {
     var data = sheet.getDataRange().getValues();
     var time = new Date().getTime();
     for (var row = 1; row < data.length; row++) {
-        if (data[row][4] == "Scheduled") {
-            var schedule = data[row][3];
-            if ((schedule != "") && (schedule.getTime() <= time)) {
+        if (data[row][4] == "SCHEDULED") {
+            var schedule = moment(data[row][3]).format("DD/MM/YYYY HH.mm.ss");
+            if (schedule.isSameOrBefore(moment())) {
                 var message = GmailApp.getMessageById(data[row][0]);
                 var body = message.getBody();
                 var options = {
@@ -112,7 +138,7 @@ function sendMails() {
                 /* Send a copy of the draft message and move it to Gmail trash */
                 GmailApp.sendEmail(message.getTo(), message.getSubject(), body, options);
                 //message.moveToTrash();
-                sheet.getRange("E" + (row + 1)).setValue("Delivered");
+                sheet.getRange("E" + (row + 1)).setValue("DELIVERED");
             }
         }
     }
