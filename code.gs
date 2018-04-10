@@ -48,25 +48,6 @@ function sendEmail() {
       var schedule = moment(records[i].getFieldValue("DATE"), "DD/MM/YYYY HH:mm");
       if (schedule.isSameOrBefore(moment())){
         GmailApp.getDraft(records[i].getFieldValue("ID")).send();
-        /*
-        Logger.log(records[i].getFieldValue("ID"));
-        var draftId = records[i].getFieldValue("ID")
-        var message = GmailApp.getDraft(draftId).getMessage();
-        Logger.log(message);
-        Logger.log(message.getBody());
-        Logger.log(message.getTo());
-        Logger.log((message.getBcc()) == "" ? Session.getActiveUser().getEmail() : message.getBcc() + ", " + Session.getActiveUser().getEmail());
-        var body = message.getBody();
-        var options = {
-          cc: message.getCc(),
-          bcc: (message.getBcc()) == "" ? Session.getActiveUser().getEmail() : message.getBcc() + ", " + Session.getActiveUser().getEmail(),
-          htmlBody: body,
-          replyTo: message.getReplyTo(),
-          attachments: message.getAttachments()
-        }
-        
-        GmailApp.sendEmail(message.getTo(), message.getSubject(), body, options);
-        */
         records[i].setFieldValue("STATUS","DELIVERED");
         records[i].setFieldValue("DETAILS", moment().format("DD/MM/YYYY HH:mm"));
         records[i].commit();
